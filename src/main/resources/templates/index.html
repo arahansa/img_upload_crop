@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link  href="/cropper.css" rel="stylesheet">
+    <style>
+        img {
+            max-width: 100%; /* This rule is very important, please do not ignore this! */
+        }
+    </style>
+</head>
+<body>
+
+index...
+
+<br>
+
+
+<p>
+    <!-- Below are a series of inputs which allow file selection and interaction with the cropper api -->
+    <input type="file" id="fileInput" accept="image/*" />
+    <input type="button" id="btnCrop" value="Crop" />
+    <input type="button" id="btnRestore" value="Restore" />
+    <input type="button" id="btnupload" value="Upload"/>
+</p>
+
+<div id="wrap_wrap">
+    <div id="wrap_canvas" class="" style="max-width: 1200px;"><canvas id="canvas"></canvas></div>
+</div>
+
+<div id="result"></div>
+
+<br>
+<a href="https://fengyuanchen.github.io/cropper/" target="_blank">소스 사이트</a>
+
+<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>-->
+<script src="/jquery-2.2.4.min.js"></script>
+<script src="/cropper.js"></script>
+<script>
+
+    function removeAndRestore(){
+        $("#wrap_canvas").remove();
+        $("#wrap_wrap").html("<div id='wrap_canvas' class='' style='max-width: 1200px;'><canvas id='canvas'></canvas></div>");
+    }
+
+    function uploadImage(){
+        console.log("이미지 업로드..!");
+        var canvas  = $("#canvas");
+        canvas.cropper('getCroppedCanvas').toBlob(function (blob) {
+            var formData = new FormData();
+
+            formData.append('file', blob);
+
+            $.ajax('/imageupload', {
+                method: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function () {
+                    console.log('Upload success');
+                },
+                error: function () {
+                    console.log('Upload error');
+                }
+            });
+        });
+    }
+
+    $(function(){
+        $("#btnupload").click(uploadImage);
+
+
+        $('#btnCrop').click(function() {
+            var canvas  = $("#canvas"),
+                context = canvas.get(0).getContext("2d"),
+                $result = $('#result');
+
+            // Get a string base 64 data url
+            var croppedImageDataURL = canvas.cropper('getCroppedCanvas').toDataURL("image/png");
+            $result.append( $('<img>').attr('src', croppedImageDataURL) );
+        });
+        $('#btnRestore').click(function() {
+            var canvas  = $("#canvas"),
+                context = canvas.get(0).getContext("2d"),
+                $result = $('#result');
+
+            canvas.cropper('reset');
+            $result.empty();
+        });
+
+        $('#fileInput').on( 'change', function(){
+            removeAndRestore();
+
+            var canvas  = $("#canvas"),
+                context = canvas.get(0).getContext("2d"),
+                $result = $('#result');
+
+            console.log("파일 체인지..!!.");
+            if (this.files && this.files[0]) {
+                console.log("파일 0");
+                if ( this.files[0].type.match(/^image\//) ) {
+                    console.log("파일 이미지...");
+                    var reader = new FileReader();
+                    reader.onload = function(evt) {
+                        var img = new Image();
+                        img.onload = function() {
+                            context.restore();
+                            console.log("이미지 온로드...!");
+                            context.clearRect(0, 0, img.width, img.height);
+                            context.canvas.height = img.height;
+                            context.canvas.width  = img.width;
+                            context.drawImage(img, 0, 0);
+                            var cropper = canvas.cropper({
+                                aspectRatio: 1 / 1
+                            });
+                        };
+                        img.src = evt.target.result;
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+                else {
+                    alert("Invalid file type! Please select an image file.");
+                }
+            }
+            else {
+                alert('No file(s) selected.');
+            }
+        });
+    });
+</script>
+</body>
+</html>
